@@ -9,7 +9,7 @@
 
   html,body{ height:100%; margin:0; background:var(--brand-bg); color:#fff;
              font-family:Arial,system-ui,-apple-system,Segoe UI,Roboto; }
-  body{ touch-action:none; } /* يمنع سحب الصفحة أثناء اللمس */
+  body{ touch-action:none; } /* يمنع السحب الافتراضي أثناء اللعب */
 
   /* ===== Header/Layout ===== */
   .wrap{ max-width:900px; margin:auto; padding:8px; padding-top:40px; }
@@ -18,11 +18,11 @@
   .badge{ background:var(--brand-yellow); color:#392e04; font-weight:800;
           padding:4px 10px; border-radius:999px; }
 
-  /* ===== Game area (الحجم يضبطه JS) ===== */
+  /* ===== Game area ===== */
   .game-area{
     position:relative;
     margin:0 auto;
-    width:100%;          /* سيُكتب عرض/ارتفاع فعلي من JS */
+    width:100%;
     max-width:960px;
     height:auto;
     background:#101936;
@@ -49,7 +49,7 @@
         padding:10px 14px; font-weight:800; cursor:pointer; margin-top:12px;
         box-shadow:0 6px 20px rgba(25,118,210,.35); }
 
-  /* ===== Touch controls (ثابتة داخل اللعبة وفوق شريط سفاري) ===== */
+  /* ===== Touch controls ===== */
   .touch-controls{
     position:absolute; left:0; right:0;
     bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
@@ -70,7 +70,7 @@
   @media (max-width:600px){
     .wrap{
       padding-top:12px;
-      padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 110px); /* مساحة للأزرار */
+      padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 110px);
       max-width:100%;
     }
     header{ padding-bottom:6px; }
@@ -138,7 +138,7 @@ window.addEventListener('load', function(){
   let player = { x: BASE_W/2, y: BASE_H-40, w: 90, h: 16, speed: 6 };
   let keys   = { left:false, right:false };
 
-  // Keyboard
+  // Keyboard controls
   window.addEventListener('keydown', e=>{
     if(e.code==='ArrowLeft')  keys.left  = true;
     if(e.code==='ArrowRight') keys.right = true;
@@ -151,7 +151,7 @@ window.addEventListener('load', function(){
     if(e.code==='ArrowRight') keys.right = false;
   });
 
-  // Touch + Mouse (iOS-safe)
+  // Touch + Mouse controls
   function bindHold(btn, setKey){
     const on  = e=>{ e.preventDefault(); setKey(true);  };
     const off = e=>{ e.preventDefault(); setKey(false); };
@@ -166,18 +166,21 @@ window.addEventListener('load', function(){
 
   if(startBtn){ startBtn.addEventListener('click', e=>{ e.preventDefault(); start(); }); }
 
-  /* ===== ضبط حجم اللعبة — لا تتخطى الشاشة أبداً ===== */
+  /* ===== ضبط الحجم — تكبير لأقصى ارتفاع ===== */
   function sizeGame(){
     const header  = document.querySelector('header');
     const footer  = document.querySelector('footer');
     const sidePadding   = 16;
-    const controlsSpace = 110; // مساحة للأزرار في أسفل الموبايل
+    const controlsSpace = 60; // قللناها عشان نزود طول اللعبة
 
     const headerH = header?.getBoundingClientRect().height || 0;
     const footerH = footer?.getBoundingClientRect().height || 0;
 
     const availW = Math.max(320, window.innerWidth  - sidePadding*2);
-    const availH = Math.max(240, window.innerHeight - headerH - footerH - controlsSpace - 8);
+    const availH = Math.max(
+      240,
+      window.innerHeight - headerH - footerH - controlsSpace - 4
+    );
 
     const scale = Math.min(1, Math.min(availW/BASE_W, availH/BASE_H));
     const targetW = Math.floor(BASE_W * scale);
@@ -188,7 +191,7 @@ window.addEventListener('load', function(){
     canvas.width      = targetW;
     canvas.height     = targetH;
 
-    // ثبّت اللاعب داخل الحدود الجديدة
+    // اللاعب في أسفل الشاشة
     player.y = canvas.height - 40;
     player.x = Math.min(Math.max(player.w/2, player.x), canvas.width - player.w/2);
   }
@@ -196,7 +199,7 @@ window.addEventListener('load', function(){
   window.addEventListener('orientationchange', ()=> setTimeout(sizeGame,150));
   sizeGame();
 
-  /* ===== Helpers ===== */
+  /* ===== Functions ===== */
   function rand(min,max){ return Math.random()*(max-min)+min; }
 
   function reset(){
