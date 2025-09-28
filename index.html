@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Super Candy — Coin Catcher</title>
+<style>
+  :root { --brand-yellow:#F7C62E; --brand-blue:#1976D2; --brand-red:#E53935; --brand-bg:#0f1226; }
+  html,body{height:100%;margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial,sans-serif;background:#0f1226;color:#fff}
+  .wrap{max-width:900px;margin:auto;padding:16px; padding-top:40px;} /* تحريك اللعبة لأسفل */
+  header{display:flex;gap:12px;align-items:center;justify-content:center} /* بدون زرار الصوت */
+  h1{margin:0;font-size:clamp(20px,4vw,36px)}
+  .badge{background:var(--brand-yellow);color:#392e04;font-weight:800;padding:4px 10px;border-radius:999px}
+  .game-area{position:relative;aspect-ratio:16/9;background:#101936;border:2px solid rgba(255,255,255,.08);border-radius:18px;overflow:hidden;box-shadow:0 20px 70px rgba(0,0,0,.45)}
+  #game{display:block;width:100%;height:100%}
+  .hud{position:absolute;inset:0;pointer-events:none;padding:12px}
+  .hud .row{display:flex;gap:12px;justify-content:space-between}
+  .pill{background:rgba(0,0,0,.35);backdrop-filter:blur(4px);border:1px solid rgba(255,255,255,.15);border-radius:999px;padding:8px 14px;font-weight:700}
+  .btn{pointer-events:auto;background:var(--brand-blue);color:#fff;border:none;border-radius:12px;padding:10px 14px;font-weight:800;cursor:pointer;box-shadow:0 6px 20px rgba(25,118,210,.35)}
+  .center-panel{position:absolute;inset:0;display:grid;place-items:center;background:rgba(0,0,0,0.5);pointer-events:auto;}
+  .card{background:rgba(0,0,0,.8);border:1px solid rgba(255,255,255,.15);padding:22px 24px;border-radius:16px;max-width:560px;text-align:center}
+  .brand{font-weight:900;letter-spacing:.6px;color:var(--brand-yellow)}
+  footer{opacity:.7;text-align:center;margin-top:12px;font-size:12px}
+  .center-panel .card{pointer-events:auto}
+  .center-panel{z-index:5}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1><span class="badge">Super Candy</span> Coin Catcher</h1>
+    </header>
+
+    <div class="game-area">
+      <canvas id="game" width="960" height="540"></canvas>
+      <div class="hud">
+        <div class="row">
+          <div class="pill">Score: <span id="score">0</span></div>
+          <div class="pill">Level: <span id="level">1</span></div>
+          <div class="pill">Lives: <span id="lives">3</span></div>
+        </div>
+      </div>
+      <div id="overlay" class="center-panel" style="z-index:5">
+        <div class="card" id="overlayCard">
+          <h2 class="brand">Welcome to Super Candy!</h2>
+          <p>Catch the coins! Missing a coin will cost you a life. Speed increases gradually as you progress.</p>
+          <button id="startBtn" class="btn" type="button" onclick="return window.__start && window.__start(event)" tabindex="0">▶ Start</button>
+        </div>
+      </div>
+    </div>
+
+    <footer>© Super Candy — demo</footer>
+  </div>
+
+<script>
+window.addEventListener('load', function(){
+  window.__start = function(e){ 
+    if(e){ e.preventDefault(); e.stopPropagation(); } 
+    if(!state.running){ start(); } 
+    return false; 
+  };
+
+  var canvas = document.getElementById('game');
+  var ctx = canvas.getContext('2d');
+  var W = canvas.width, H = canvas.height;
+  var overlay = document.getElementById('overlay');
+  var overlayCard = document.getElementById('overlayCard');
+  var startBtn = document.getElementById('startBtn');
+  var scoreEl = document.getElementById('score');
+  var levelEl = document.getElementById('level');
+  var livesEl = document.getElementById('lives');
+
+  var state = { running:false, paused:false, over:false, score:0, level:1, lives:3, objects:[] };
+  var player = { x: W/2, y: H-40, w: 90, h: 16, speed: 6 };
+  var keys = {left:false,right:false};
+
+  window.addEventListener('keydown', function(e){
+    if(e.code==='ArrowLeft') keys.left=true;
+    if(e.code==='ArrowRight') keys.right=true;
+    if((e.key==='Enter' || e.code==='Space') && overlay.style.display !== 'none') { e.preventDefault(); start(); }
+  });
+  window.addEventListener('keyup', function(e){
+    if(e.code==='ArrowLeft') keys.left=false;
+    if(e.code==='ArrowRight') keys.right=false;
+  });
+
+  function reset(){
+    state.score=0; state.level=1; state.lives=3; state.objects.length=0; state.over=false;
+    scoreEl.textContent='0'; levelEl.textContent='1'; livesEl.textContent='3';
+    player.x = W/2;
+  }
+
+  function start(){
+    reset();
+    state.running = true;
+    overlay.style.display = 'none';
+    overlay.setAttribute('aria-hidden','true');
+    requestAnimationFrame(loop);
+  }
+
+  if(startBtn){ 
+    startBtn.addEventListener('click', function(e){ 
+      e.preventDefault(); window.__start(e); 
+    }); 
+    startBtn.addEventListener('keydown', function(e){ 
+      if(e.key==='Enter' || e.code==='Space'){ window.__start(e); }
+    }); 
+  }
+
+  overlay.addEventListener('click', function(e){
+    if(e.target && (e.target.id==='startBtn' || e.target.closest('#startBtn'))){ window.__start(e); }
+  });
+
+  function rand(min,max){ return Math.random()*(max-min)+min; }
+
+  function spawn(){
+    var maxActive = Math.min(4 + Math.floor(state.level/2), 8);
+    if(state.objects.length >= maxActive) return;
+
+    var extraSpeed = Math.floor(state.score/150) * 0.3;
+    var base = 0.9 + state.level*0.12 + extraSpeed;
+    var speed = base + Math.random()*0.25;
+
+    var size = rand(18,26);
+    state.objects.push({ x: rand(20,W-20), y:-30, r:size, v:speed });
+  }
+
+  var last=0, spawnTimer=0;
+  function loop(ts){
+    if(!state.running) return;
+    var dt = Math.min(32, (ts-last)||16); last = ts;
+    update(dt/16);
+    draw();
+    requestAnimationFrame(loop);
+  }
+
+  function update(dt){
+    spawnTimer += dt; 
+    var interval = Math.max(26 - state.level*1.0, 12);
+    if(spawnTimer > interval){ spawn(); spawnTimer = 0; }
+
+    if(keys.left) player.x -= player.speed*dt*2.0;
+    if(keys.right) player.x += player.speed*dt*2.0;
+    player.x = Math.max(player.w/2, Math.min(W-player.w/2, player.x));
+
+    for(var i=state.objects.length-1;i>=0;i--){
+      var o = state.objects[i];
+      o.y += o.v * dt * 1.5;
+      if(o.y - o.r > H){
+        state.objects.splice(i,1);
+        state.lives--; livesEl.textContent = String(state.lives);
+        if(state.lives<=0){ gameOver(); return; }
+        continue;
+      }
+      var cx = Math.max(player.x-player.w/2, Math.min(o.x, player.x+player.w/2));
+      var cy = Math.max(player.y-player.h/2, Math.min(o.y, player.y+player.h/2));
+      var dx=o.x-cx, dy=o.y-cy;
+      if(dx*dx+dy*dy < o.r*o.r){
+        state.objects.splice(i,1);
+        state.score += 10; scoreEl.textContent = String(state.score);
+        if(state.score && state.score % 100 === 0){ state.level++; levelEl.textContent = String(state.level); }
+      }
+    }
+  }
+
+  function draw(){
+    ctx.clearRect(0,0,W,H);
+    ctx.fillStyle = '#162042'; ctx.fillRect(0,0,W,H);
+    ctx.fillStyle = '#2a84ff';
+    ctx.fillRect(player.x-player.w/2, player.y-player.h/2, player.w, player.h);
+    for(var i=0;i<state.objects.length;i++){
+      var o = state.objects[i];
+      ctx.beginPath(); ctx.arc(o.x,o.y,o.r,0,Math.PI*2); ctx.fillStyle='#FFD700'; ctx.fill();
+    }
+  }
+
+  function gameOver(){
+    state.over = true; state.running = false;
+    overlayCard.innerHTML = '';
+    var h2 = document.createElement('h2'); h2.className='brand'; h2.textContent='Game Over';
+    var p = document.createElement('p'); p.textContent = 'Score: ' + state.score;
+    var btn = document.createElement('button'); btn.id='restart'; btn.className='btn'; btn.textContent='Restart';
+    btn.addEventListener('click', function(e){ e.preventDefault(); start(); });
+    overlayCard.appendChild(h2); overlayCard.appendChild(p); overlayCard.appendChild(btn);
+    overlay.style.display = 'grid';
+    overlay.removeAttribute('aria-hidden');
+  }
+});
+</script>
+</body>
+</html>
