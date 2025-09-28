@@ -5,101 +5,285 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Super Candy — Coin Catcher</title>
 <style>
-  :root{
-    --brand-yellow:#F7C62E;
-    --brand-blue:#1976D2;
-    --brand-bg:#0f1226;
-  }
+  :root{ --brand-yellow:#F7C62E; --brand-blue:#1976D2; --brand-bg:#0f1226; }
 
-  html,body{
-    height:100%;
-    margin:0;
-    background:var(--brand-bg);
-    color:#fff;
-    font-family:Arial,system-ui,-apple-system,Segoe UI,Roboto;
-    touch-action:none;
-  }
+  html,body{ height:100%; margin:0; background:var(--brand-bg); color:#fff;
+             font-family:Arial,system-ui,-apple-system,Segoe UI,Roboto; }
+  body{ touch-action:none; } /* يمنع سحب الصفحة أثناء اللمس */
 
-  /* ===== Layout ===== */
-  .wrap{
-    max-width:900px;
-    margin:auto;
-    padding:8px;
-    padding-top:40px;
-  }
+  /* ===== Header/Layout ===== */
+  .wrap{ max-width:900px; margin:auto; padding:8px; padding-top:40px; }
+  header{ text-align:center; padding-bottom:10px; }
+  h1{ margin:0; font-size:clamp(20px,4vw,32px); }
+  .badge{ background:var(--brand-yellow); color:#392e04; font-weight:800;
+          padding:4px 10px; border-radius:999px; }
 
-  header{text-align:center;padding-bottom:10px}
-  h1{margin:0;font-size:clamp(20px,4vw,32px)}
-  .badge{background:var(--brand-yellow);color:#392e04;font-weight:800;padding:4px 10px;border-radius:999px}
-
-  /* ===== Game Area ===== */
+  /* ===== Game area (الحجم يضبطه JS) ===== */
   .game-area{
     position:relative;
     margin:0 auto;
-    width:100%;
-    max-width:960px; /* لا تتعدى حجم الديسكتوب */
-    height:auto;     /* يحدد ديناميكياً */
+    width:100%;          /* سيُكتب عرض/ارتفاع فعلي من JS */
+    max-width:960px;
+    height:auto;
     background:#101936;
     border:2px solid rgba(255,255,255,.08);
     border-radius:18px;
     overflow:hidden;
     box-shadow:0 20px 70px rgba(0,0,0,.45);
   }
-  canvas{display:block;width:100%;height:100%}
+  canvas{ display:block; width:100%; height:100%; }
 
   /* ===== HUD ===== */
-  .hud{position:absolute;inset:0;pointer-events:none;padding:12px}
-  .hud .row{display:flex;gap:12px;justify-content:space-between}
-  .pill{
-    background:rgba(0,0,0,.35);
-    backdrop-filter:blur(4px);
-    border:1px solid rgba(255,255,255,.15);
-    border-radius:999px;
-    padding:8px 14px;
-    font-weight:700;
-    font-size:16px;
-  }
+  .hud{ position:absolute; inset:0; pointer-events:none; padding:12px; }
+  .hud .row{ display:flex; gap:12px; justify-content:space-between; }
+  .pill{ background:rgba(0,0,0,.35); backdrop-filter:blur(4px);
+         border:1px solid rgba(255,255,255,.15);
+         border-radius:999px; padding:8px 14px; font-weight:700; font-size:16px; }
 
   /* ===== Overlay ===== */
-  .center-panel{
-    position:absolute;inset:0;
-    display:grid;place-items:center;
-    background:rgba(0,0,0,.6);
-    pointer-events:auto;
-    z-index:5;
+  .center-panel{ position:absolute; inset:0; display:grid; place-items:center;
+                 background:rgba(0,0,0,.6); pointer-events:auto; z-index:5; }
+  .card{ background:rgba(0,0,0,.8); border:1px solid rgba(255,255,255,.15);
+         padding:22px 24px; border-radius:16px; max-width:560px; text-align:center; }
+  .btn{ background:var(--brand-blue); color:#fff; border:none; border-radius:12px;
+        padding:10px 14px; font-weight:800; cursor:pointer; margin-top:12px;
+        box-shadow:0 6px 20px rgba(25,118,210,.35); }
+
+  /* ===== Touch controls (ثابتة داخل اللعبة وفوق شريط سفاري) ===== */
+  .touch-controls{
+    position:absolute; left:0; right:0;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
+    width:100%;
+    display:flex; justify-content:space-between; align-items:center;
+    padding:0 16px; z-index:30; pointer-events:auto;
   }
-  .card{
-    background:rgba(0,0,0,.8);
-    border:1px solid rgba(255,255,255,.15);
-    padding:22px 24px;
-    border-radius:16px;
-    max-width:560px;
-    text-align:center;
-  }
-  .btn{
-    background:var(--brand-blue);
-    color:#fff;
-    border:none;
-    border-radius:12px;
-    padding:10px 14px;
-    font-weight:800;
-    cursor:pointer;
-    margin-top:12px;
-    box-shadow:0 6px 20px rgba(25,118,210,.35);
+  .touch-btn{
+    width:84px; height:84px; border-radius:50%;
+    background:rgba(255,255,255,0.18); backdrop-filter:blur(6px);
+    border:1px solid rgba(255,255,255,0.25);
+    display:flex; align-items:center; justify-content:center;
+    font-size:32px; font-weight:900; color:#fff;
+    user-select:none; -webkit-user-select:none; touch-action:none;
   }
 
-  /* ===== Touch Controls ===== */
-  .touch-controls{
-    position:absolute;
-    left:0;
-    right:0;
-    bottom:calc(env(safe-area-inset-bottom, 0px) + 12px);
-    width:100%;
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    padding:0 16px;
-    z-index:30;
-    pointer-events:auto;
+  /* ===== Mobile tweaks ===== */
+  @media (max-width:600px){
+    .wrap{
+      padding-top:12px;
+      padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 110px); /* مساحة للأزرار */
+      max-width:100%;
+    }
+    header{ padding-bottom:6px; }
+    .hud .row{ flex-direction:column; gap:6px; align-items:center; }
+    .pill{ font-size:14px; padding:6px 10px; }
+    footer{ margin-top:6px; font-size:11px; }
   }
-  .touch-b
+
+  footer{ opacity:.7; text-align:center; margin-top:12px; font-size:12px; }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <header><h1><span class="badge">Super Candy</span> Coin Catcher</h1></header>
+
+    <div class="game-area" id="gameArea">
+      <canvas id="game" width="960" height="540"></canvas>
+
+      <div class="hud">
+        <div class="row">
+          <div class="pill">Score: <span id="score">0</span></div>
+          <div class="pill">Level: <span id="level">1</span></div>
+          <div class="pill">Lives: <span id="lives">3</span></div>
+        </div>
+      </div>
+
+      <div id="overlay" class="center-panel">
+        <div class="card" id="overlayCard">
+          <h2>Welcome to Super Candy!</h2>
+          <p>Catch the coins! Missing a coin will cost you a life. Speed increases gradually as you progress.</p>
+          <button id="startBtn" class="btn" type="button">▶ Start</button>
+        </div>
+      </div>
+
+      <!-- Touch controls -->
+      <div class="touch-controls">
+        <div id="leftBtn" class="touch-btn">◀</div>
+        <div id="rightBtn" class="touch-btn">▶</div>
+      </div>
+    </div>
+
+    <footer>© Super Candy — demo</footer>
+  </div>
+
+<script>
+window.addEventListener('load', function(){
+  const area   = document.getElementById('gameArea');
+  const canvas = document.getElementById('game');
+  const ctx    = canvas.getContext('2d');
+
+  const overlay    = document.getElementById('overlay');
+  const overlayCard= document.getElementById('overlayCard');
+  const startBtn   = document.getElementById('startBtn');
+
+  const scoreEl = document.getElementById('score');
+  const levelEl = document.getElementById('level');
+  const livesEl = document.getElementById('lives');
+
+  const leftBtn  = document.getElementById('leftBtn');
+  const rightBtn = document.getElementById('rightBtn');
+
+  /* ===== منطق اللعبة ===== */
+  const BASE_W = 960, BASE_H = 540;   // نسبة 16:9
+  let state  = { running:false, score:0, level:1, lives:3, objects:[] };
+  let player = { x: BASE_W/2, y: BASE_H-40, w: 90, h: 16, speed: 6 };
+  let keys   = { left:false, right:false };
+
+  // Keyboard
+  window.addEventListener('keydown', e=>{
+    if(e.code==='ArrowLeft')  keys.left  = true;
+    if(e.code==='ArrowRight') keys.right = true;
+    if((e.key==='Enter'||e.code==='Space') && overlay.style.display!=='none'){
+      e.preventDefault(); start();
+    }
+  });
+  window.addEventListener('keyup', e=>{
+    if(e.code==='ArrowLeft')  keys.left  = false;
+    if(e.code==='ArrowRight') keys.right = false;
+  });
+
+  // Touch + Mouse (iOS-safe)
+  function bindHold(btn, setKey){
+    const on  = e=>{ e.preventDefault(); setKey(true);  };
+    const off = e=>{ e.preventDefault(); setKey(false); };
+    btn.addEventListener('touchstart', on,  {passive:false});
+    btn.addEventListener('touchend',   off, {passive:false});
+    btn.addEventListener('touchcancel',off, {passive:false});
+    btn.addEventListener('mousedown',  on);
+    window.addEventListener('mouseup', off);
+  }
+  bindHold(leftBtn,  v=>keys.left=v);
+  bindHold(rightBtn, v=>keys.right=v);
+
+  if(startBtn){ startBtn.addEventListener('click', e=>{ e.preventDefault(); start(); }); }
+
+  /* ===== ضبط حجم اللعبة — لا تتخطى الشاشة أبداً ===== */
+  function sizeGame(){
+    const header  = document.querySelector('header');
+    const footer  = document.querySelector('footer');
+    const sidePadding   = 16;
+    const controlsSpace = 110; // مساحة للأزرار في أسفل الموبايل
+
+    const headerH = header?.getBoundingClientRect().height || 0;
+    const footerH = footer?.getBoundingClientRect().height || 0;
+
+    const availW = Math.max(320, window.innerWidth  - sidePadding*2);
+    const availH = Math.max(240, window.innerHeight - headerH - footerH - controlsSpace - 8);
+
+    const scale = Math.min(1, Math.min(availW/BASE_W, availH/BASE_H));
+    const targetW = Math.floor(BASE_W * scale);
+    const targetH = Math.floor(BASE_H * scale);
+
+    area.style.width  = targetW + 'px';
+    area.style.height = targetH + 'px';
+    canvas.width      = targetW;
+    canvas.height     = targetH;
+
+    // ثبّت اللاعب داخل الحدود الجديدة
+    player.y = canvas.height - 40;
+    player.x = Math.min(Math.max(player.w/2, player.x), canvas.width - player.w/2);
+  }
+  window.addEventListener('resize', sizeGame);
+  window.addEventListener('orientationchange', ()=> setTimeout(sizeGame,150));
+  sizeGame();
+
+  /* ===== Helpers ===== */
+  function rand(min,max){ return Math.random()*(max-min)+min; }
+
+  function reset(){
+    state.score=0; state.level=1; state.lives=3; state.objects.length=0;
+    scoreEl.textContent='0'; levelEl.textContent='1'; livesEl.textContent='3';
+    player.x = canvas.width/2;
+  }
+
+  function start(){
+    reset(); state.running = true; overlay.style.display='none';
+    requestAnimationFrame(loop);
+  }
+
+  function spawn(){
+    const maxActive = Math.min(4 + Math.floor(state.level/2), 8);
+    if(state.objects.length >= maxActive) return;
+
+    const extraSpeed = Math.floor(state.score/150) * 0.3;
+    const base = 0.9 + state.level*0.12 + extraSpeed;
+    const speed = base + Math.random()*0.25;
+
+    const size = rand(18,26);
+    state.objects.push({ x: rand(20,canvas.width-20), y:-30, r:size, v:speed });
+  }
+
+  let last=0, spawnTimer=0;
+  function loop(ts){
+    if(!state.running) return;
+    const dt = Math.min(32, (ts-last)||16); last = ts;
+    update(dt/16); draw(); requestAnimationFrame(loop);
+  }
+
+  function update(dt){
+    spawnTimer += dt;
+    const interval = Math.max(26 - state.level*1.0, 12);
+    if(spawnTimer > interval){ spawn(); spawnTimer = 0; }
+
+    if(keys.left)  player.x -= player.speed*dt*2.0;
+    if(keys.right) player.x += player.speed*dt*2.0;
+    player.x = Math.max(player.w/2, Math.min(canvas.width - player.w/2, player.x));
+
+    for(let i=state.objects.length-1;i>=0;i--){
+      const o = state.objects[i];
+      o.y += o.v * dt * 1.5;
+
+      if(o.y - o.r > canvas.height){
+        state.objects.splice(i,1);
+        state.lives--; livesEl.textContent = state.lives;
+        if(state.lives<=0){ gameOver(); return; }
+        continue;
+      }
+      const cx = Math.max(player.x-player.w/2, Math.min(o.x, player.x+player.w/2));
+      const cy = Math.max(player.y-player.h/2, Math.min(o.y, player.y+player.h/2));
+      const dx=o.x-cx, dy=o.y-cy;
+      if(dx*dx+dy*dy < o.r*o.r){
+        state.objects.splice(i,1);
+        state.score += 10; scoreEl.textContent = state.score;
+        if(state.score % 100 === 0){ state.level++; levelEl.textContent = state.level; }
+      }
+    }
+  }
+
+  function draw(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    ctx.fillStyle='#162042'; ctx.fillRect(0,0,canvas.width,canvas.height);
+
+    // player
+    ctx.fillStyle='#2a84ff';
+    ctx.fillRect(player.x-player.w/2, player.y-player.h/2, player.w, player.h);
+
+    // coins
+    ctx.fillStyle='#FFD700';
+    state.objects.forEach(o=>{
+      ctx.beginPath(); ctx.arc(o.x,o.y,o.r,0,Math.PI*2); ctx.fill();
+    });
+  }
+
+  function gameOver(){
+    state.running=false;
+    overlayCard.innerHTML = `
+      <h2>Game Over</h2>
+      <p>Final Score: ${state.score}</p>
+      <button class="btn" onclick="location.reload()">Restart</button>
+    `;
+    overlay.style.display='grid';
+  }
+});
+</script>
+</body>
+</html>
